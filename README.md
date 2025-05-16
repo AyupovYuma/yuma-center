@@ -1,70 +1,129 @@
 # YUMA Center API
 
-Система управления сборками для разработчиков.
+**YUMA Center** — backend-система на FastAPI для управления проектами, разработчиками, сборками и комментариями к сборкам.
 
-## Функциональность
+---
 
-- Регистрация разработчиков
-- Загрузка сборок
-- Скачивание сборок
-- Управление проектами
+## Возможности
 
-## Установка
+- Регистрация разработчиков и проектов
+- Загрузка и скачивание сборок
+- Оставление комментариев к сборкам
+- Получение списка сборок и комментариев
+- Асинхронная работа с базой данных (SQLAlchemy)
+- Миграции через Alembic
+- Удобная документация через Swagger UI
 
-1. Клонировать репозиторий
-2. Создать виртуальное окружение:
-```bash
-python -m venv venv
+---
+
+## Установка и запуск
+
+1. **Клонируй репозиторий:**
+   ```bash
+   git clone https://github.com/yourusername/yuma_center.git
+   cd yuma_center
+   ```
+
+2. **Создай и активируй виртуальное окружение:**
+   ```bash
+   python -m venv venv
+   # Windows:
+   .\venv\Scripts\activate
+   # Linux/Mac:
+   source venv/bin/activate
+   ```
+
+3. **Установи зависимости:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Применить миграции (создать таблицы):**
+   ```bash
+   alembic upgrade head
+   ```
+
+5. **Запусти сервер:**
+   ```bash
+   python run.py
+   ```
+   или
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+6. **Открой документацию:**
+   - Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+## Примеры API
+
+### Регистрация разработчика
+`POST /auth/register`
+```json
+{
+  "login": "ayupov",
+  "password": "123456",
+  "name": "ayupov",
+  "project_name": "FastApi"
+}
 ```
-3. Активировать виртуальное окружение:
-```bash
-# Windows
-.\venv\Scripts\activate
-# Linux/MacOS
-source venv/bin/activate
+
+### Загрузка сборки
+`POST /builds/upload`  
+(используй форму: developer_login, version, description, file)
+
+### Получение сборок разработчика
+`GET /builds/developer/{developer_id}`
+
+### Скачивание сборки
+`GET /builds/download/{developer_id}/{filename}`
+
+### Добавление комментария к сборке
+`POST /builds/{build_id}/comments`
+```json
+{
+  "text": "Отличная сборка!",
+  "developer_id": 1
+}
 ```
-4. Установить зависимости:
-```bash
-pip install -r requirements.txt
-```
-5. Применить миграции:
-```bash
-alembic upgrade head
-```
-6. Запустить сервер:
-```bash
-python run.py
-```
 
-## API Endpoints
+### Получение комментариев к сборке
+`GET /builds/{build_id}/comments`
 
-### Auth
+---
 
-- POST `/auth/register` - Регистрация нового разработчика
-
-### Builds
-
-- POST `/builds/upload` - Загрузка новой сборки
-- GET `/builds/developer/{developer_id}` - Получение списка сборок разработчика
-- GET `/builds/download/{developer_id}/{filename}` - Скачивание сборки
-
-## Разработка
-
-### Структура проекта
+## Структура проекта
 
 ```
 app/
-├── db/              - База данных
-├── routers/         - API endpoints
-├── services/        - Бизнес-логика
-├── models/          - Модели данных
-└── storage/         - Хранилище файлов
+├── routers/         # API endpoints
+├── models.py        # SQLAlchemy модели
+├── schemas.py       # Pydantic-схемы
+├── crub.py          # CRUD-операции
+├── database.py      # Настройки базы данных
+├── config.py        # Конфиг проекта
+├── storage/         # Хранилище файлов (игнорируется git)
+├── ...
+tests/               # Тесты
+run.py               # Запуск сервера
+requirements.txt     # Зависимости
 ```
 
-### Технологии
+---
+
+## Технологии
 
 - FastAPI
-- SQLAlchemy
+- SQLAlchemy (async)
 - Alembic
 - Pydantic
-- aiofiles 
+- aiofiles
+- Pytest, httpx (тесты)
+
+---
+
+## Переменные окружения
+```
+DATABASE_URL=sqlite+aiosqlite:///./app.db
