@@ -37,3 +37,4 @@ async def register(dev: DeveloperRegister, db: AsyncSession = Depends(get_async_
     )
 
     return DeveloperInDB.from_orm(developer)
+

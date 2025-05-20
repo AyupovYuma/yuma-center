@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routers import builds, auth
+from app.routers import builds, auth, build_comments
 from app.config import settings
 from app.database import init_db
-from app.routers import build_comments
+
+
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -14,11 +15,12 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=["http://localhost:5174"],  # или ["*"] временно
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Подключаем роутеры
 app.include_router(builds.router)
@@ -41,3 +43,4 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get('/')
 def read_root():
     return {'message': f'Welcome to {settings.APP_NAME}'}
+

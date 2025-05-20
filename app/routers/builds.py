@@ -1,16 +1,21 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from pathlib import Path
 
+from app.models import Build, Developer, Project
 from app.database import get_async_session
-from app.schemas import BuildInDB
+from app.schemas import BuildInDB, ProjectInDB
 from app.services import builds as build_service
 from app.crub import (
     get_builds_by_developer,
     get_build_by_developer_and_filename,
-    developer_by_login  # Новая функция для поиска по имени
+    developer_by_login,  # Новая функция для поиска по имени
+    get_all_projects
 )
+from app.crub import get_builds_by_project  # Нужно реализовать эту функцию
 
 router = APIRouter(prefix='/builds', tags=['builds'])
 
@@ -74,3 +79,34 @@ async def download_build(
     if not build:
         raise HTTPException(404, detail='File not found')
     return FileResponse(build.file_path, filename=filename)
+
+
+@router.get('/project/{project_id}')
+async def builds_by_project(
+    project_id: int,
+    sort: str = "newest",
+    db: AsyncSession = Depends(get_async_session)
+):
+    # Получаем все сборки через разработчиков проекта
+    stmt = (
+        select(Build)
+        .join(Developer)
+        .where(Developer.project_id == project_id)
+        .options(
+            selectinload(Build.comments),  # Явная загрузка комментариев
+            selectinload(Build.developer)
+        )
+    )
+
+    if sort == "newest":
+        stmt = stmt.order_by(Build.upload_time.desc())
+    elif sort == "oldest":
+        stmt = stmt.order_by(Build.upload_time.asc())
+
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+@router.get('/', response_model=list[ProjectInDB])
+async def all_projects(db: AsyncSession = Depends(get_async_session)):
+    return await get_all_projects(db)
