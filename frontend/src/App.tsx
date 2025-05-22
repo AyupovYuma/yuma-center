@@ -1,17 +1,21 @@
-import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import ProjectsPage from "./pages/ProjectsPage"; // Исправленный импорт
-import BuildsPage from "./pages/BuildsPage";
+import { Outlet, useLocation } from "react-router-dom";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar";
+import AuthRoute from "./components/AuthRoute";
 
-function App() {
+export default function App() {
+  const location = useLocation();
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<ProjectsPage />} />
-        <Route path="/project/:projectId" element={<BuildsPage />} />
-      </Routes>
-    </BrowserRouter>
+    <div className="flex flex-col h-screen font-retro bg-black text-green-400">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        {!isAuthPage && <Sidebar />}
+        <main className="flex-1 overflow-y-auto p-6 bg-black">
+          <Outlet />
+        </main>
+      </div>
+    </div>
   );
 }
-
-export default App;

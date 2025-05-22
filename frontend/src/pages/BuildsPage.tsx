@@ -1,67 +1,57 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Card, CardContent } from "../components/ui/card";
-import { DownloadIcon } from "lucide-react";
+import axios from "axios";
 
-interface Build {
+interface Developer {
   id: number;
-  version: string;
-  created_at: string;
-  description: string;
-  filename: string;
-  developer_id: number;
-  comments?: Comment[];
+  login: string;
+  name: string;
+  project_id: number;
 }
 
 interface Comment {
   id: number;
   text: string;
   created_at: string;
-  author: string;
+  developer_id: number;
+  developer?: Developer;
+}
+
+interface Build {
+  id: number;
+  version: string;
+  description: string;
+  filename: string;
+  upload_time: string;
+  file_path: string;
+  developer_id: number;
+  developer: Developer;
+  comments: Comment[];
 }
 
 export default function BuildsPage() {
-  const { projectId } = useParams();
+  const { id: projectId } = useParams();
   const [builds, setBuilds] = useState<Build[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [sortBuilds, setSortBuilds] = useState<"newest" | "oldest">("newest");
-  const [sortComments, setSortComments] = useState<"newest" | "oldest">("newest");
-  const [newComment, setNewComment] = useState("");
-
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Дата неизвестна";
-
-      return date.toLocaleDateString("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false
-      });
-    } catch (error) {
-      console.error("Ошибка форматирования даты:", error);
-      return "Дата неизвестна";
-    }
-  };
+  const [expandedBuilds, setExpandedBuilds] = useState<Record<number, boolean>>({});
+  const [newComment, setNewComment] = useState(""); // Добавлено состояние для нового комментария
 
   useEffect(() => {
     const fetchBuilds = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `http://localhost:8000/builds/project/${projectId}?sort=${sortBuilds}`
+        const response = await axios.get(
+          `http://localhost:8000/builds/project/${projectId}?sort=newest`
         );
-
-        if (!response.ok) throw new Error("Ошибка загрузки сборок");
-
-        const data = await response.json();
-        setBuilds(data);
+        setBuilds(response.data);
+        const initialExpanded: Record<number, boolean> = {};
+        response.data.forEach((build: Build) => {
+          initialExpanded[build.id] = false;
+        });
+        setExpandedBuilds(initialExpanded);
       } catch (err) {
-        console.error("Ошибка:", err);
+        console.error("Ошибка загрузки сборок:", err);
         setError("Не удалось загрузить сборки");
       } finally {
         setLoading(false);
@@ -69,155 +59,158 @@ export default function BuildsPage() {
     };
 
     fetchBuilds();
-  }, [projectId, sortBuilds]);
+  }, [projectId]);
 
-  const handleCommentSubmit = async (buildId: number) => {
-    if (!newComment.trim()) return;
+  const handleDownload = (build: Build) => {
+    const downloadUrl = `http://localhost:8000/builds/download/${build.developer_id}/${encodeURIComponent(build.filename)}`;
+    window.open(downloadUrl, '_blank');
+  };
+
+  const handleAddComment = async (buildId: number, text: string) => {
+    if (!text.trim()) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/comments/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          build_id: buildId,
-          text: newComment,
-          developer_id: 1 // Заменить на реальный ID
-        })
-      });
+      const token = localStorage.getItem("authToken");
+      const developerId = localStorage.getItem("developerId");
 
-      if (response.ok) {
-        const newCommentData = await response.json();
-        setBuilds(prev => prev.map(b =>
-          b.id === buildId
-            ? {...b, comments: [...(b.comments || []), newCommentData]}
-            : b
-        ));
-        setNewComment("");
-      }
-    } catch (error) {
-      console.error("Ошибка отправки комментария:", error);
+//       if (!token || !developerId) {
+//         throw new Error("Требуется авторизация");
+//       }
+
+      await axios.post(
+        `http://localhost:8000/builds/${buildId}/comments`,
+        {
+          text: text,
+          developer_id: Number(developerId)
+        },
+      );
+//         {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             "Content-Type": "application/json"
+//           }
+//         }
+
+
+      // Обновляем список сборок после добавления комментария
+      const response = await axios.get(
+        `http://localhost:8000/builds/project/${projectId}?sort=newest`
+      );
+      setBuilds(response.data);
+      setNewComment("");
+    } catch (err) {
+      console.error("Ошибка добавления комментария:", err);
+      setError(`Не удалось добавить комментарий: ${err.response?.data?.detail || err.message}`);
     }
   };
 
-  const sortedBuilds = [...builds].sort((a, b) => {
-    const dateA = new Date(a.created_at).getTime();
-    const dateB = new Date(b.created_at).getTime();
-    return sortBuilds === "newest" ? dateB - dateA : dateA - dateB;
-  });
+  const toggleComments = (buildId: number) => {
+    setExpandedBuilds(prev => ({
+      ...prev,
+      [buildId]: !prev[buildId]
+    }));
+  };
 
-  const sortedComments = (comments?: Comment[]) => {
-    if (!comments) return [];
-    return [...comments].sort((a, b) => {
-      const dateA = new Date(a.created_at).getTime();
-      const dateB = new Date(b.created_at).getTime();
-      return sortComments === "newest" ? dateB - dateA : dateA - dateB;
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString('ru-RU', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <p className="text-red-500 text-lg">{error}</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="text-green-400 p-4">Загрузка...</div>;
+  if (error) return <div className="text-red-500 p-4">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 p-8 font-pixel">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex gap-4 mb-6 flex-wrap">
-          <select
-            value={sortBuilds}
-            onChange={(e) => setSortBuilds(e.target.value as any)}
-            className="bg-gray-800 text-gray-100 p-2 rounded border border-gray-700"
-          >
-            <option value="newest">Новые сборки сначала</option>
-            <option value="oldest">Старые сборки сначала</option>
-          </select>
+    <div className="text-green-400 p-4">
+      <h2 className="text-2xl mb-4 text-green-300">Сборки проекта #{projectId}</h2>
 
-          <select
-            value={sortComments}
-            onChange={(e) => setSortComments(e.target.value as any)}
-            className="bg-gray-800 text-gray-100 p-2 rounded border border-gray-700"
-          >
-            <option value="newest">Новые комментарии сначала</option>
-            <option value="oldest">Старые комментарии сначала</option>
-          </select>
-        </div>
-
-        <div className="space-y-6">
-          {sortedBuilds.map((build) => (
-            <Card key={build.id} className="bg-gray-800 p-6 rounded-lg shadow-lg">
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-300">
-                      Версия: {build.version}
-                    </h3>
-                    <p className="text-gray-400 text-sm">
-                      {formatDate(build.created_at)}
-                    </p>
-                    <p className="mt-2 text-gray-300">{build.description}</p>
-                  </div>
-                  <a
-                    href={`http://localhost:8000/builds/download/${build.developer_id}/${build.filename}`}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                    download
-                  >
-                    <DownloadIcon className="w-5 h-5" />
-                    Скачать
-                  </a>
+      {builds.length === 0 ? (
+        <p className="text-green-300">Нет доступных сборок</p>
+      ) : (
+        <div className="space-y-4">
+          {builds.map((build) => (
+            <div key={build.id} className="border border-green-500 p-3 rounded-lg bg-black bg-opacity-50">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-medium text-green-300 truncate">
+                    {build.filename}
+                  </h3>
+                  <p className="text-sm mb-1">
+                    <span className="text-green-400">v{build.version}</span> •
+                    <span className="text-green-500 ml-2">{build.developer.name}</span>
+                  </p>
+                  {build.description && (
+                    <p className="text-sm text-green-400 mb-2">{build.description}</p>
+                  )}
+                  <p className="text-xs text-green-500">
+                    {formatDate(build.upload_time)}
+                  </p>
                 </div>
 
-                <div className="border-t border-gray-700 pt-4">
-                  <h4 className="font-bold mb-3 text-gray-400">Комментарии:</h4>
-                  <div className="space-y-3">
-                    {sortedComments(build.comments).map((comment) => (
-                      <div key={comment.id} className="bg-gray-700 p-3 rounded">
-                        <p className="text-gray-100">{comment.text}</p>
-                        <div className="flex justify-between mt-2">
-                          <span className="text-sm text-gray-400">
-                            {comment.author}
-                          </span>
-                          <span className="text-sm text-gray-400">
-                            {formatDate(comment.created_at)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    onClick={() => handleDownload(build)}
+                    className="px-3 py-1 border border-green-500 hover:bg-green-600 hover:text-black text-sm whitespace-nowrap"
+                  >
+                    Скачать
+                  </button>
+                  <button
+                    onClick={() => toggleComments(build.id)}
+                    className="text-xs text-green-300 hover:underline"
+                  >
+                    {expandedBuilds[build.id] ? "Скрыть" : "Показать"} комментарии ({build.comments.length})
+                  </button>
+                </div>
+              </div>
+
+              {expandedBuilds[build.id] && (
+                <div className="mt-3 pt-3 border-t border-green-700">
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    {build.comments.length > 0 ? (
+                      [...build.comments]
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        .map((comment) => (
+                          <div key={comment.id} className="text-sm">
+                            <p className="text-green-400">{comment.text}</p>
+                            <p className="text-xs text-green-500">
+                              {comment.developer?.name || 'Аноним'}, {formatDate(comment.created_at)}
+                            </p>
+                          </div>
+                        ))
+                    ) : (
+                      <p className="text-sm text-green-500">Нет комментариев</p>
+                    )}
                   </div>
 
-                  <div className="mt-4">
+                  <div className="mt-3">
                     <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      className="w-full p-2 bg-gray-700 text-gray-100 rounded border border-gray-600"
+                      className="w-full p-2 border border-green-500 bg-black text-green-400 text-sm"
                       placeholder="Написать комментарий..."
-                      rows={3}
+                      rows={2}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (newComment.trim()) {
+                            handleAddComment(build.id, newComment.trim());
+                          }
+                        }
+                      }}
                     />
-                    <button
-                      onClick={() => handleCommentSubmit(build.id)}
-                      className="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                    >
-                      Отправить комментарий
-                    </button>
+                    <p className="text-xs text-green-500 mt-1">Нажмите Enter для отправки</p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

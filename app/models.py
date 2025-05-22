@@ -9,7 +9,7 @@ class Build(Base):
     __tablename__ = 'builds'
 
     id = Column(Integer, primary_key=True, index=True)
-    developer_id = Column(Integer, ForeignKey('developers.id'))
+    developer_id = Column(Integer, ForeignKey('developers.id'), nullable=True)
     filename = Column(String)
     version = Column(String)
     description = Column(String)
@@ -53,7 +53,7 @@ class BuildComment(Base):
     id = Column(Integer, primary_key=True, index=True)
     text = Column(String, nullable=False)
     build_id = Column(Integer, ForeignKey('builds.id'), nullable=False)
-    developer_id = Column(Integer, ForeignKey('developers.id'), nullable=False)
+    developer_id = Column(Integer, ForeignKey('developers.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     build = relationship('Build', back_populates='comments')

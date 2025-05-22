@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 # ==== Project ====
 class ProjectBase(BaseModel):
@@ -60,9 +61,9 @@ class BuildInDB(BuildBase):
 
 '''Схема для комментариев к сборкам'''
 
-class BuildCommentCreate(BaseModel):
+class CommentCreate(BaseModel):
     text: str
-    developer_id: int
+    developer_id: Optional[int] = None
 
 class BuildCommentRead(BaseModel):
     id: int
@@ -74,4 +75,12 @@ class BuildCommentRead(BaseModel):
     class Config:
         from_attributes = True
     
-    
+'''токин'''
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    login: str
+
+class TokenData(BaseModel):
+    login: str | None = None

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from app.models import Build, Developer, Project, BuildComment
+from datetime import datetime
 
 '''Project'''
 
@@ -72,12 +73,20 @@ async def get_project_by_name(db: AsyncSession, name: str) -> Project | None:
     result = await db.execute(select(Project).where(Project.name == name))
     return result.scalar_one_or_none()
 
-async def create_build_comment(db: AsyncSession, build_id: int, text: str, developer_id: int) -> BuildComment:
-    comment = BuildComment(build_id=build_id, text=text, developer_id=developer_id)
+async def create_build_comment(
+    db: AsyncSession,
+    build_id: int,
+    text: str,
+    developer_id: int | None = None
+) -> BuildComment:
+    comment = BuildComment(build_id=build_id, text=text, created_at=datetime.utcnow())
+    if developer_id is not None:
+        comment.developer_id = developer_id
     db.add(comment)
     await db.commit()
     await db.refresh(comment)
     return comment
+
 
 async def get_build_comments(db: AsyncSession, build_id: int) -> list[BuildComment]:
     result = await db.execute(select(BuildComment).where(BuildComment.build_id == build_id))
