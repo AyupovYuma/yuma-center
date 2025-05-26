@@ -42,6 +42,8 @@ const handleUpload = async () => {
   formData.append("version", version);
   formData.append("description", description);
   formData.append("file", file);
+  formData.append("project_id", selectedProjectId.toString());
+
 
   try {
     const response = await axios.post(

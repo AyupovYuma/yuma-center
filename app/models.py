@@ -6,19 +6,22 @@ from datetime import datetime
 
 
 class Build(Base):
-    __tablename__ = 'builds'
+    __tablename__ = "builds"
 
     id = Column(Integer, primary_key=True, index=True)
-    developer_id = Column(Integer, ForeignKey('developers.id'), nullable=True)
-    filename = Column(String)
+    developer_id = Column(Integer, ForeignKey("developers.id"))
+    project_id = Column(Integer, ForeignKey("projects.id"))  # Внешний ключ
     version = Column(String)
     description = Column(String)
-    upload_time = Column(DateTime, default=datetime.utcnow)
+    filename = Column(String)
     file_path = Column(String)
+    upload_time = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
-    developer = relationship('Developer', back_populates='builds')
-    comments = relationship('BuildComment', back_populates='build')
-
+    # Связи
+    developer = relationship("Developer", back_populates="builds")
+    project = relationship("Project", back_populates="builds")  # Обратная связь
+    comments = relationship("BuildComment", back_populates="build")
 # class Tester(Base):
 #     __tablename__  = 'testers'
 #
@@ -34,6 +37,7 @@ class Project(Base):
     name = Column(String, unique=True, index=True)
 
     developers = relationship('Developer', back_populates='project')
+    builds = relationship("Build", back_populates="project")
 
 class Developer(Base):
     __tablename__ = 'developers'

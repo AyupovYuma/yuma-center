@@ -59,15 +59,37 @@ async def get_builds_by_developer(db: AsyncSession, developer_id: int) -> list[B
     return result.scalars().all()
 
 
-async def get_build_by_developer_and_filename(db: AsyncSession, developer_id: int,
-                                              filename: str) -> Build | None:
+async def get_build_by_developer_and_filename(
+    db: AsyncSession,
+    developer_id: int,
+    filename: str,
+    version: str
+) -> Build | None:
     result = await db.execute(
         select(Build).where(
             (Build.developer_id == developer_id) &
-            (Build.filename == filename)
+            (Build.filename == filename) &
+            (Build.version == version)
         )
     )
     return result.scalar_one_or_none()
+
+async def get_latest_build_by_filename(
+    db: AsyncSession,
+    developer_id: int,
+    filename: str
+) -> Build | None:
+    result = await db.execute(
+        select(Build)
+        .where(
+            (Build.developer_id == developer_id) &
+            (Build.filename == filename)
+        )
+        .order_by(Build.created_at.desc())  # или .order_by(Build.version.desc()), если version — числовой
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
 
 async def get_project_by_name(db: AsyncSession, name: str) -> Project | None:
     result = await db.execute(select(Project).where(Project.name == name))
