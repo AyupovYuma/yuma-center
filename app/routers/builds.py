@@ -50,9 +50,8 @@ async def upload_build(
     # 3. Проверка: есть ли уже такая версия в этом проекте
     result = await db.execute(
         select(Build)
-        .join(Developer)
         .where(
-            Developer.project_id == project_id,
+            Build.project_id == project_id,
             Build.version == version
         )
     )
@@ -115,13 +114,11 @@ async def builds_by_project(
     sort: str = "newest",
     db: AsyncSession = Depends(get_async_session)
 ):
-    # Получаем все сборки через разработчиков проекта
     stmt = (
         select(Build)
-        .join(Developer)
-        .where(Developer.project_id == project_id)
+        .where(Build.project_id == project_id)
         .options(
-            selectinload(Build.comments),  # Явная загрузка комментариев
+            selectinload(Build.comments),
             selectinload(Build.developer)
         )
     )

@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.routers import builds, auth, build_comments
+from app.routers import builds, auth, build_comments, project
 from app.config import settings
 from app.database import init_db
 
@@ -26,6 +26,8 @@ app.add_middleware(
 app.include_router(builds.router)
 app.include_router(auth.router)
 app.include_router(build_comments.router)
+app.include_router(project.router)
+
 
 
 @app.on_event("startup")

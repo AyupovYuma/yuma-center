@@ -118,7 +118,7 @@ async def get_builds_by_project(db: AsyncSession, project_id: int) -> list[Build
     from app.models import Build, Developer
     from sqlalchemy import select
     result = await db.execute(
-        select(Build).join(Developer).where(Developer.project_id == project_id)
+        select(Build).where(Build.project_id == project_id)
     )
     return result.scalars().all()
 

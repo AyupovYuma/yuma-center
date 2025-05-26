@@ -1,8 +1,8 @@
-"""initial clean state
+"""Initial migration
 
-Revision ID: 4ee96d480799
+Revision ID: 9fc515dde5ff
 Revises: 
-Create Date: 2025-05-21 19:13:31.881646
+Create Date: 2025-05-26 20:31:50.305963
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '4ee96d480799'
+revision: str = '9fc515dde5ff'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -43,12 +43,15 @@ def upgrade() -> None:
     op.create_table('builds',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('developer_id', sa.Integer(), nullable=True),
-    sa.Column('filename', sa.String(), nullable=True),
+    sa.Column('project_id', sa.Integer(), nullable=True),
     sa.Column('version', sa.String(), nullable=True),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('upload_time', sa.DateTime(), nullable=True),
+    sa.Column('filename', sa.String(), nullable=True),
     sa.Column('file_path', sa.String(), nullable=True),
+    sa.Column('upload_time', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['developer_id'], ['developers.id'], ),
+    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_builds_id'), 'builds', ['id'], unique=False)
